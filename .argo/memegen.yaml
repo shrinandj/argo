@@ -1,0 +1,27 @@
+---
+type: container
+version: 1
+name: memegen
+description: This container runs memegen
+resources:
+  mem_mib: 300
+  cpu_cores: 0.2
+image: docker.io/shrinand/memegen_argo:latest
+command: ["/run.sh"]
+args: ["%%inputs.parameters.IMAGE%%", "%%inputs.parameters.TOP%%", "%%inputs.parameters.BOTTOM%%"]
+inputs:
+  parameters:
+    COMMIT:
+       default: "%%session.commit%%"
+    IMAGE:
+      default: "Image name or URL"
+    TOP:
+      default: "Header"
+    BOTTOM:
+      default: "Footer"
+outputs:
+  artifacts:
+    MEME:
+      path: /tmp
+      meta_data:
+      - browsable
