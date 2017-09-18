@@ -21,6 +21,7 @@ from ax.meta import AXClusterId, AXClusterDataPath
 from ax.platform.exceptions import AXPlatformException
 from ax.platform.ax_monitor import AXKubeMonitor
 from ax.platform.ax_monitor_helper import KubeObjWaiter, KubeObjStatusCode
+from ax.platform.cluster_config import AXClusterConfig, ClusterProvider
 from ax.platform.container import ContainerVolume
 from ax.platform.container_specs import InitContainerPullImage, InitContainerTask, SidecarDockerDaemon, InitContainerSetup
 from ax.platform.container_specs import SIDEKICK_WAIT_CONTAINER_NAME, DIND_CONTAINER_NAME
@@ -484,9 +485,12 @@ class PodSpec(object):
         if self.restart_policy is not None:
             pspec.restart_policy = self.restart_policy
 
-        pspec.node_selector = {
-            "ax.tier": self._tier
-        }
+        cluster_name_id = AXClusterId().get_cluster_name_id()
+        cluster_config = AXClusterConfig(cluster_name_id=cluster_name_id)
+        if cluster_config.get_cluster_provider() != ClusterProvider.USER:
+            pspec.node_selector = {
+                "ax.tier": self._tier
+            }
 
         # finalize the pod template spec
         spec = swagger_client.V1PodTemplateSpec()

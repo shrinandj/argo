@@ -76,6 +76,16 @@ class AXSYSKubeYamlUpdater(object):
         with open(self._config_file, "r") as f:
             data = f.read()
         for c in yaml.load_all(data):
+            # Remove the nodeSelector if it is a user provided Kubernetes cluster
+            if self._cluster_config.get_cluster_provider() == ClusterProvider.USER:
+                if "spec" in c:
+                    if "nodeSelector" in c["spec"]:
+                        del(c["spec"]["nodeSelector"])
+
+                    if "template" in c["spec"] and \
+                    "spec" in c["spec"]["template"] and \
+                    "nodeSelector" in c["spec"]["template"]["spec"]:
+                        del(c["spec"]["template"]["spec"]["nodeSelector"])
             swagger_obj = self._config_yaml(c)
             yaml_obj = ApiClient().sanitize_for_serialization(swagger_obj)
             self._swagger_components.append(swagger_obj)
@@ -136,7 +146,7 @@ class AXSYSKubeYamlUpdater(object):
                 swagger_obj.spec.template.spec.image_pull_secrets = None
 
             node_selector = swagger_obj.spec.template.spec.node_selector
-            if node_selector.get('ax.tier', 'applatix') == 'master':
+            if node_selector and node_selector.get('ax.tier', 'applatix') == 'master':
                 # Skip updating containers on master.
                 logger.info("Skip updating cpu, mem multipliers for pods on master: %s", swagger_obj.metadata.name)
             else:
