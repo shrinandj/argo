@@ -13,6 +13,7 @@ This is organized at bucket level.
 import logging
 import json
 import time
+import os
 
 import boto3
 import requests
@@ -102,8 +103,12 @@ class AXS3Bucket(object):
         logger.info("Using region %s for bucket %s", self._region, self._name)
 
         session = boto3.Session(profile_name=aws_profile, region_name=self._region)
-        self._s3 = session.resource("s3")
-        self._s3_client = session.client("s3")
+        self._s3 = session.resource("s3", aws_access_key_id=os.environ.get("ARGO_S3_ACCESS_KEY_ID", None),
+                aws_secret_access_key=os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None),
+                endpoint_url=os.environ.get("ARGO_S3_ENDPOINT", None))
+        self._s3_client = session.client("s3", aws_access_key_id=os.environ.get("ARGO_S3_ACCESS_KEY_ID", None),
+                aws_secret_access_key=os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None),
+                endpoint_url=os.environ.get("ARGO_S3_ENDPOINT", None))
         self._bucket = self._s3.Bucket(self._name)
         self._policy = self._s3.BucketPolicy(self._name)
 
