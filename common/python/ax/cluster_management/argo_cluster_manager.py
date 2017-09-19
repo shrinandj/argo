@@ -120,6 +120,8 @@ class ArgoClusterManager(object):
         os.environ["ARGO_LOG_BUCKET_NAME"] = args.cluster_bucket
         os.environ["ARGO_DATA_BUCKET_NAME"] = args.cluster_bucket
         os.environ["ARGO_KUBE_CONFIG_PATH"] = args.kubeconfig
+        os.environ["ARGO_ACCESS_KEY"] = args.access_key
+        os.environ["ARGO_SECRET_KEY"] = args.secret_key
 
         logger.info("Using customer id: %s", os.environ["AX_CUSTOMER_ID"])
 
@@ -142,7 +144,7 @@ class ArgoClusterManager(object):
         platform_install_config.validate()
 
         ci = ClusterInstaller(cfg=platform_install_config)
-        ci.update_and_save_config(cluster_bucket=args.cluster_bucket)
+        ci.update_and_save_config(cluster_bucket=args.cluster_bucket, bucket_endpoint=args.bucket_endpoint)
 
         cluster_dns, username, password = ci.install_and_run_platform()
         ci.post_install()

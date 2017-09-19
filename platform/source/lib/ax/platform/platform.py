@@ -8,6 +8,7 @@
 Module to start/stop AX platform by managing kubernetes objects
 """
 
+import base64
 import logging
 import os
 import random
@@ -187,6 +188,8 @@ class AXPlatform(object):
             "AX_CLUSTER_META_URL_V1": self._bucket.get_object_url_from_key(key=self._cluster_config_path.cluster_metadata()),
             "DNS_SERVER_IP": os.getenv("DNS_SERVER_IP", default_kube_up_env["DNS_SERVER_IP"]),
             "ARGO_DATA_BUCKET_NAME": AXClusterConfigPath(self._cluster_name_id).bucket(),
+            "ARGO_ACCESS_KEY": base64.b64encode(os.getenv("ARGO_ACCESS_KEY", "")),
+            "ARGO_SECRET_KEY": base64.b64encode(os.getenv("ARGO_SECRET_KEY", "")),
         }
 
 

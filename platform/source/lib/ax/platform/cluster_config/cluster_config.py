@@ -203,6 +203,9 @@ class AXClusterConfig(with_metaclass(Singleton, object)):
     def get_cluster_provider(self):
         return self._conf["cloud"].get("cluster_provider", None)
 
+    def get_bucket_endpoint(self):
+        return self._conf["cloud"]["configure"].get("bucket_endpoint", None)
+
     # Setters. Currently only a very limited items is mutable
     def set_ax_cluster_user(self, user):
         self._conf["cloud"]["configure"]["cluster_user"] = user
@@ -239,6 +242,9 @@ class AXClusterConfig(with_metaclass(Singleton, object)):
 
     def set_cluster_provider(self, cluster_provider):
         self._conf["cloud"]["cluster_provider"] = cluster_provider
+
+    def set_bucket_endpoint(self, bucket_endpoint):
+        self._conf["cloud"]["configure"]["bucket_endpoint"] = bucket_endpoint
 
     def reload_config(self):
         """
