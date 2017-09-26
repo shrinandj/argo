@@ -457,7 +457,7 @@ def update_cluster_sg_aws():
                 raise ace
 
         # Update axops security groups
-        _do_update_axops(ip=ip_ranges)
+        #_do_update_axops(ip=ip_ranges)
 
         # Persist cluster config. We need to do it the last as if any of the previous
         # option fails, we should not show up the updated trusted CIDRs on UI from

@@ -175,7 +175,7 @@ class ContainerOuterExecutor(object):
         logger.info("<env>: artifact_tags: %s", self._artifacts_tags)
         logger.info("<env>: docker_enable: %s", self._docker_enable)
 
-        if Cloud().in_cloud_aws():
+        if Cloud().in_cloud_aws() or os.environ.get("AX_TARGET_CLOUD", None) == "aws":
             self._s3 = boto3.Session().resource('s3',
                     aws_access_key_id=os.environ.get("ARGO_S3_ACCESS_KEY_ID", None),
                     aws_secret_access_key=os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None),
@@ -567,6 +567,10 @@ class ContainerOuterExecutor(object):
 
         self._upload_container_logs()
         ret_reporting = self._do_reporting(bad_artifacts, error_messages)
+
+        import time
+        logger.info("Sleeping ...")
+        time.sleep(10)
         return len(bad_artifacts) == 0 and ret_reporting
 
     def _prepare_directories(self):

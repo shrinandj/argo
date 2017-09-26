@@ -10,14 +10,11 @@ Module to start/stop AX platform by managing kubernetes objects
 
 import base64
 import logging
+from multiprocessing.pool import ThreadPool
 import os
 import random
-import requests
 import subprocess
 import time
-import urllib3
-import yaml
-from multiprocessing.pool import ThreadPool
 
 from ax.aws.profiles import AWSAccountInfo
 from ax.cloud import Cloud
@@ -32,14 +29,17 @@ from ax.platform.ax_monitor import AXKubeMonitor
 from ax.platform.ax_monitor_helper import KubeObjStatusCode, KubeObjWaiter
 from ax.platform.cluster_config import AXClusterConfig, SpotInstanceOption, ClusterProvider
 from ax.platform.cluster_version import AXVersion
+from ax.platform.component_config import AXPlatformConfig, AXPlatformObjectGroup, AXPlatformObject, \
+    ObjectGroupPolicy, ObjectGroupPolicyPredicate, AXPlatformConfigDefaults
 from ax.platform.component_config import SoftwareInfo
 from ax.platform.exceptions import AXPlatformException
 from ax.platform.kube_env_config import default_kube_up_env
 from ax.platform.resource.consts import EC2_PARAMS
-from ax.platform.component_config import AXPlatformConfig, AXPlatformObjectGroup, AXPlatformObject, \
-    ObjectGroupPolicy, ObjectGroupPolicyPredicate, AXPlatformConfigDefaults
 from ax.util.const import COLOR_NORM, COLOR_GREEN
 from ax.util.kube_poll import KubeObjPoll
+import requests
+import urllib3
+import yaml
 
 
 logger = logging.getLogger(__name__)
@@ -188,8 +188,8 @@ class AXPlatform(object):
             "AX_CLUSTER_META_URL_V1": self._bucket.get_object_url_from_key(key=self._cluster_config_path.cluster_metadata()),
             "DNS_SERVER_IP": os.getenv("DNS_SERVER_IP", default_kube_up_env["DNS_SERVER_IP"]),
             "ARGO_DATA_BUCKET_NAME": AXClusterConfigPath(self._cluster_name_id).bucket(),
-            "ARGO_ACCESS_KEY": base64.b64encode(os.getenv("ARGO_ACCESS_KEY", "")),
-            "ARGO_SECRET_KEY": base64.b64encode(os.getenv("ARGO_SECRET_KEY", "")),
+            "ARGO_S3_ACCESS_KEY_ID": base64.b64encode(os.getenv("ARGO_S3_ACCESS_KEY_ID", "")),
+            "ARGO_S3_ACCESS_KEY_SECRET": base64.b64encode(os.getenv("ARGO_S3_ACCESS_KEY_SECRET", "")),
         }
 
 
@@ -318,7 +318,7 @@ class AXPlatform(object):
         self.create_objects(steps[2])
 
         # Prepare axops_eip
-        self._set_ext_dns()
+        # self._set_ext_dns()
 
         logger.debug("Replacing ENVs: %s", self._replacing)
 

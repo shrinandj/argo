@@ -19,7 +19,7 @@ metadata:
     name: axdb
 spec:
     serviceName: "axdb"
-    replicas: 3
+    replicas: 1
     template:
         metadata:
             labels:
@@ -62,9 +62,9 @@ spec:
                   - name: CASSANDRA_SERVICE
                     value: axdb
                   - name: CASSANDRA_MEM_LIMIT
-                    value: "1500"
+                    value: "950"
                   - name: NUMBER_OF_NODES
-                    value: "3"
+                    value: "1"
                   - name: POD_NAMESPACE
                     valueFrom:
                         fieldRef:
@@ -84,11 +84,11 @@ spec:
                     name: axdbport
                 resources:
                     requests:
-                        cpu: 100m
-                        memory: 2000Mi
+                        cpu: 400m
+                        memory: 1024Mi
                     limits:
-                        cpu: 1000m
-                        memory: 3000Mi
+                        cpu: 400m
+                        memory: 1024Mi
                 volumeMounts:
                   - name: pdata
                     mountPath: /ax/axdb/cassandra
@@ -119,4 +119,4 @@ spec:
             accessModes: [ "ReadWriteOnce" ]
             resources:
                 requests:
-                    storage: 30Gi
+                    storage: 3Gi

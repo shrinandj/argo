@@ -120,8 +120,9 @@ class ArgoClusterManager(object):
         os.environ["ARGO_LOG_BUCKET_NAME"] = args.cluster_bucket
         os.environ["ARGO_DATA_BUCKET_NAME"] = args.cluster_bucket
         os.environ["ARGO_KUBE_CONFIG_PATH"] = args.kubeconfig
-        os.environ["ARGO_ACCESS_KEY"] = args.access_key
-        os.environ["ARGO_SECRET_KEY"] = args.secret_key
+        os.environ["ARGO_S3_ACCESS_KEY_ID"] = args.access_key
+        os.environ["ARGO_S3_ACCESS_KEY_SECRET"] = args.secret_key
+        os.environ["ARGO_S3_ENDPOINT"] = args.bucket_endpoint
 
         logger.info("Using customer id: %s", os.environ["AX_CUSTOMER_ID"])
 
@@ -134,8 +135,9 @@ class ArgoClusterManager(object):
         v1 = client.CoreV1Api()
         ret = v1.list_node(watch=False)
         instance = bunchify(ret.items[0])
-        platform_install_config.region = instance.metadata.labels["failure-domain.beta.kubernetes.io/region"]
-        platform_install_config.cloud_placement = instance.metadata.labels["failure-domain.beta.kubernetes.io/zone"]
+        platform_install_config.region = instance.metadata.labels.get("failure-domain.beta.kubernetes.io/region", None)
+        platform_install_config.cloud_placement = instance.metadata.labels.get("failure-domain.beta.kubernetes.io/zone", None)
+
 
         platform_install_config.default_or_wizard()
 

@@ -17,7 +17,7 @@ spec:
                         "name": "pre",
                         "image": "${REGISTRY}/${NAMESPACE}/kube-init:${VERSION}",
                         "imagePullPolicy": "IfNotPresent",
-                        "command": ["timeout", "1200", "sh", "-c", "wait_http http://axmon:8901/v1/axmon/ping http://axdb:8083/v1/axdb/version ; wait_tcp kafka-zk:9092"]
+                        "command": ["timeout", "1200", "sh", "-c", "wait_http http://axdb:8083/v1/axdb/status"]
                     }
                 ]'
         spec:
@@ -59,11 +59,11 @@ spec:
                     value: "${ARGO_DATA_BUCKET_NAME}"
                 resources:
                     requests:
-                        cpu: 300m
-                        memory: 500Mi
+                        cpu: 100m
+                        memory: 100Mi
                     limits:
-                        cpu: 1000m
-                        memory: 1500Mi
+                        cpu: 100m
+                        memory: 150Mi
               - name: kubectl-proxy
                 image: argoproj/kubectl:v1.6.7
                 args: ["proxy", "-p", "8001"]

@@ -13,11 +13,11 @@ from math import ceil
 import os
 
 from ax.cloud import Cloud
-from ax.meta import AXClusterId, AXCustomerId
 from ax.kubernetes.ax_kube_dict import KubeKindToV1KubeSwaggerObject
 from ax.kubernetes.swagger_client import ApiClient, V1Pod, V1beta1StatefulSet, V1beta1Deployment, V1beta1DaemonSet, \
     V1PersistentVolumeClaim, V1Container, V1Service, V1EnvVar, V1EnvVarSource, V1ObjectFieldSelector
 from ax.kubernetes.swagger_client.models.v1_secret_key_selector import V1SecretKeySelector
+from ax.meta import AXClusterId, AXCustomerId
 from ax.platform.cluster_config import AXClusterConfig, ClusterProvider
 from ax.platform.component_config import SoftwareInfo
 from ax.platform.resource import AXSYSResourceConfig
@@ -179,11 +179,13 @@ class AXSYSKubeYamlUpdater(object):
             # logger.info("Object %s does not need to configure resource", type(swagger_obj))
             # HACK, as the original hook will be messed up
             if isinstance(swagger_obj, V1Service):
+                '''
                 if swagger_obj.metadata.name == "axops":
                     swagger_obj.spec.load_balancer_source_ranges = []
                     for cidr in self._cluster_config.get_trusted_cidr():
                         # Seems swagger client does not support unicode ... SIGH
                         swagger_obj.spec.load_balancer_source_ranges.append(str(cidr))
+                '''
 
                 # HACK #2: if we don't do this, kubectl will complain about something such as
                 #
@@ -297,7 +299,7 @@ class AXSYSKubeYamlUpdater(object):
             {"name": "AX_CLUSTER_NAME_ID", "value": self._cluster_name_id},
             {"name": "AX_CUSTOMER_ID", "value": AXCustomerId().get_customer_id()},
             {"name": "ARGO_S3_ENDPOINT", "value": self._cluster_config.get_bucket_endpoint()},
-
+            {"name": "AX_AWS_REGION", "value": "us-west-2"},
 
             # Secrets
             {"name": "ARGO_S3_ACCESS_KEY_ID", "secret": "argo-access-key"},

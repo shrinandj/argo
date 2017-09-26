@@ -7,12 +7,6 @@
 """
 Main entry point for AXmon.
 """
-from gevent import monkey
-monkey.patch_all()
-
-from ax.util.az_patch import az_patch
-az_patch()
-
 import argparse
 import logging
 import signal
@@ -20,6 +14,15 @@ import signal
 from ax.cloud import Cloud
 from ax.platform.axmon_main import AXMon, __version__, AXMON_DEFAULT_PORT
 from ax.platform.rest import axmon_rest_start
+from ax.util.az_patch import az_patch
+from gevent import monkey
+
+
+monkey.patch_all()
+
+az_patch()
+
+
 
 
 def debug(sig, frame):
@@ -51,7 +54,8 @@ if __name__ == "__main__":
     logging.getLogger("botocore").setLevel(logging.WARNING)
     logging.getLogger("boto3").setLevel(logging.WARNING)
 
-    Cloud().set_target_cloud(Cloud().own_cloud())
+    import os
+    Cloud().set_target_cloud(os.getenv("AX_TARGET_CLOUD", Cloud().own_cloud()))
     signal.signal(signal.SIGUSR1, debug)
     axmon_rest_start(port=args.port)
     AXMon().run()

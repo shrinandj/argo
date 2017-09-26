@@ -7,8 +7,9 @@ import os
 
 from ax.cloud import Cloud
 from ax.meta import AXClusterId, AXCustomerId
-from ax.platform.container import Container, ContainerVolume
 from ax.platform.component_config import SoftwareInfo
+from ax.platform.container import Container, ContainerVolume
+
 
 AX_DOCKER_GRAPH_STORAGE_THRESHOLD_DEFAULT = "0.5"
 
@@ -106,6 +107,8 @@ class SidecarTask(WaitContainer):
         if Cloud().in_cloud_aws():
             logpath.set_type("HOSTPATH", "/var/lib/docker/containers")
         elif Cloud().in_cloud_gcp():
+            logpath.set_type("HOSTPATH", "/var/lib/docker/containers")
+        else:
             logpath.set_type("HOSTPATH", "/var/lib/docker/containers")
         self.add_volume(logpath)
         self.add_env("LOGMOUNT_PATH", "/logs")

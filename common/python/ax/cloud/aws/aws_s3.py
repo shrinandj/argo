@@ -99,7 +99,7 @@ class AXS3Bucket(object):
         self._name = bucket_name
         self._aws_profile = aws_profile
         self._region = region if region else self._get_bucket_region_from_aws()
-        assert self._region, "Please make sure bucket {} is created, or provide a region name to create bucket".format(self._name)
+        #assert self._region, "Please make sure bucket {} is created, or provide a region name to create bucket".format(self._name)
         logger.info("Using region %s for bucket %s", self._region, self._name)
 
         session = boto3.Session(profile_name=aws_profile, region_name=self._region)
@@ -109,6 +109,7 @@ class AXS3Bucket(object):
         self._s3_client = session.client("s3", aws_access_key_id=os.environ.get("ARGO_S3_ACCESS_KEY_ID", None),
                 aws_secret_access_key=os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None),
                 endpoint_url=os.environ.get("ARGO_S3_ENDPOINT", None))
+        logger.info("USING %s, %s, %s\n", os.environ.get("ARGO_S3_ACCESS_KEY_ID", None), os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None), os.environ.get("ARGO_S3_ENDPOINT", None))
         self._bucket = self._s3.Bucket(self._name)
         self._policy = self._s3.BucketPolicy(self._name)
 
@@ -129,7 +130,10 @@ class AXS3Bucket(object):
             s3 = boto3.Session(
                 profile_name=self._aws_profile,
                 region_name=start_region
-            ).client("s3", config=Config(signature_version='s3v4'))
+            ).client("s3", aws_access_key_id=os.environ.get("ARGO_S3_ACCESS_KEY_ID", None),
+                    aws_secret_access_key=os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None),
+                    endpoint_url=os.environ.get("ARGO_S3_ENDPOINT", None),
+                    config=Config(signature_version='s3v4'))
 
             logger.debug("Finding region for bucket %s from with initial region %s", self._name, start_region)
             try:
@@ -543,6 +547,7 @@ class AXS3Bucket(object):
             if "Not Found" in str(ce):
                 return False
             else:
+                logger.info("FAILED TO FIND BUCKET NAME: %s", self._name)
                 raise ce
 
     def _empty(self):

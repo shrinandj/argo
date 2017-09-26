@@ -9,30 +9,31 @@ Code for creating executing a step in a workflow
 import base64
 import json
 import logging
-import time
 import os
+import time
 
-from future.utils import iteritems
-from pyparsing import Word, nums, alphanums
-from dateutil import parser
-
+from argo.services.service import Service
+from ax.cloud import Cloud
 from ax.kubernetes import swagger_client
-from ax.kubernetes.kube_object import KubeObject
 from ax.kubernetes.client import KubernetesApiClient, retry_unless
+from ax.kubernetes.kube_object import KubeObject
 from ax.meta import AXLogPath, AXClusterDataPath, AXClusterId, AXCustomerId
+from ax.platform.cluster_config import AXClusterConfig
 from ax.platform.component_config import SoftwareInfo
+from ax.platform.container import ContainerVolume
 from ax.platform.exceptions import AXPlatformException, AXVolumeOwnershipException
 from ax.platform.operations import Operation
 from ax.platform.volumes import VolumeManager
-from ax.platform.container import ContainerVolume
-from ax.platform.cluster_config import AXClusterConfig
 from ax.util.ax_random import random_string
 from ax.util.converter import string_to_dns_label, string_to_k8s_label
-from .pod import Pod, PodSpec
-from .container_specs import SidecarTask
-from .container import Container
+from dateutil import parser
+from future.utils import iteritems
+from pyparsing import Word, nums, alphanums
 
-from argo.services.service import Service
+from .container import Container
+from .container_specs import SidecarTask
+from .pod import Pod, PodSpec
+
 
 logger = logging.getLogger(__name__)
 
@@ -239,11 +240,13 @@ class Task(object):
 
         pod_spec.add_main_container(main_container)
         wait_container = self._generate_wait_container_spec()
+        target_cloud = os.environ.get("AX_TARGET_CLOUD", Cloud().own_cloud())
+        wait_container.add_env("AX_TARGET_CLOUD", target_cloud)
         pod_spec.add_wait_container(wait_container)
 
         (cpu, mem, d_cpu, d_mem) = self._container_resources()
-        main_container.add_resource_constraints("cpu_cores", cpu, limit=None)
-        main_container.add_resource_constraints("mem_mib", mem, limit=mem)
+        main_container.add_resource_constraints("cpu_cores", min(cpu, 100.0), limit=None)
+        main_container.add_resource_constraints("mem_mib", min(mem, 100.0), limit=mem)
 
         # handle artifacts
         self_sid = None
@@ -253,6 +256,13 @@ class Task(object):
         # TODO: This function calls ax_artifact and needs to be rewritten. Ugly code.
         artifacts_container = pod_spec.enable_artifacts(self.software_info.image_namespace, self.software_info.image_version, self_sid, self.service.template.to_dict())
         artifacts_container.add_env("AX_JOB_NAME", value=self.name)
+        artifacts_container.add_env("AX_TARGET_CLOUD", target_cloud)
+        artifacts_container.add_env("ARGO_LOG_BUCKET_NAME", os.environ.get("ARGO_LOG_BUCKET_NAME"))
+        artifacts_container.add_env("ARGO_DATA_BUCKET_NAME", self._s3_bucket)
+        artifacts_container.add_env("ARGO_S3_ACCESS_KEY_ID", os.environ.get("ARGO_S3_ACCESS_KEY_ID"))
+        artifacts_container.add_env("ARGO_S3_ACCESS_KEY_SECRET", os.environ.get("ARGO_S3_ACCESS_KEY_SECRET"))
+        artifacts_container.add_env("ARGO_S3_ENDPOINT", os.environ.get("ARGO_S3_ENDPOINT"))
+
 
         if self.service.template.docker_spec:
             dind_c = pod_spec.enable_docker(self.service.template.docker_spec.graph_storage_size_mib)
@@ -278,7 +288,7 @@ class Task(object):
         Converts service template to V1Container
         """
         container = self.service.template
-        c = Container(container.name, container.image, pull_policy=container.image_pull_policy)
+        c = Container(container.name, container.image, pull_policy="Always")
 
         c.add_env("AX_CONTAINER_NAME", value=self.name)
         c.add_env("AX_ROOT_SERVICE_INSTANCE_ID", value=self.service.service_context.root_workflow_id)
@@ -331,6 +341,12 @@ class Task(object):
         c.add_env("AX_CUSTOMER_ID", AXCustomerId().get_customer_id())
         c.add_env("AX_REGION", AXClusterConfig().get_region())
         c.add_env("AX_CLUSTER_NAME_ID", self._name_id)
+
+        c.add_env("ARGO_LOG_BUCKET_NAME", os.environ.get("ARGO_LOG_BUCKET_NAME"))
+        c.add_env("ARGO_DATA_BUCKET_NAME", self._s3_bucket)
+        c.add_env("ARGO_S3_ACCESS_KEY_ID", os.environ.get("ARGO_S3_ACCESS_KEY_ID"))
+        c.add_env("ARGO_S3_ACCESS_KEY_SECRET", os.environ.get("ARGO_S3_ACCESS_KEY_SECRET"))
+        c.add_env("ARGO_S3_ENDPOINT", os.environ.get("ARGO_S3_ENDPOINT"))
 
         return c
 

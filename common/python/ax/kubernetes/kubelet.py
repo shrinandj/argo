@@ -9,14 +9,15 @@ Client for talking with local kubelet
 """
 
 import logging
-import requests
-import ijson
-from future.utils import with_metaclass
 
 from ax.cloud import Cloud
-from ax.util.singleton import Singleton
 from ax.kubernetes.swagger_client import ApiClient
 from ax.kubernetes.swagger_client import V1Pod
+from ax.util.singleton import Singleton
+from future.utils import with_metaclass
+import ijson
+import requests
+
 
 logger = logging.getLogger(__name__)
 

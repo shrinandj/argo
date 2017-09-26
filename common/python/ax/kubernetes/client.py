@@ -14,6 +14,7 @@ from ax.cloud import Cloud
 from ax.exceptions import AXKubeApiException, AXNotFoundException, AXConflictException
 from ax.kubernetes.ax_kube_dict import KUBE_NO_NAMESPACE_SET
 from ax.util.singleton import Singleton
+from future.moves.urllib.parse import urlparse
 from future.utils import with_metaclass
 import requests
 from retrying import retry
@@ -319,6 +320,11 @@ class KubernetesApiClient(object):
                     self.host = cred_info['host']
                     self.token = cred_info['token']
 
+
+            p = urlparse('https://{}'.format(self.host))
+            if p.port:
+                self.port = p.port
+                self.host = p.hostname
             self.url = 'https://{}:{}'.format(self.host, self.port)
             # NOTE: options set on the configuration singleton (e.g. verify_ssl),
             # must be set *before* instantiation of ApiClient for it to take effect.

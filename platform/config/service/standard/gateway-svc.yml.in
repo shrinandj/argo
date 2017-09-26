@@ -61,11 +61,11 @@ spec:
                   - containerPort: 8889
                 resources:
                     requests:
-                        cpu: 200m
-                        memory: 300Mi
+                        cpu: 75m
+                        memory: 200Mi
                     limits:
-                        cpu: 800m
-                        memory: 600Mi
+                        cpu: 100m
+                        memory: 200Mi
                 volumeMounts:
                   - mountPath: /ax/data
                     name: gateway-persistent-storage

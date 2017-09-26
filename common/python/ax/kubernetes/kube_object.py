@@ -709,7 +709,7 @@ class KubeObject(object):
         cmd += ["--namespace {}".format(self._namespace)]
         if self._kube_config is not None:
             cmd += ["--kubeconfig={}".format(self._kube_config)]
-        # logger.debug("Calling [%s]", cmd)
+        logger.info("Calling [%s]", cmd)
 
         p = subprocess.Popen(shlex.split(' '.join(cmd)), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()

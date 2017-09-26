@@ -4,9 +4,6 @@
 # Copyright 2015-2017 Applatix, Inc. All rights reserved.
 #
 
-from ax.util.az_patch import az_patch
-az_patch()
-
 import argparse
 import base64
 import json
@@ -14,29 +11,35 @@ import logging
 import os
 import subprocess
 import time
-import urllib3
 import uuid
-
-from retrying import retry
-
-import boto3
-import requests
 
 from ax.cloud import Cloud
 from ax.kubernetes.client import KubernetesApiClient, swagger_client, retry_unless
 from ax.kubernetes.kubelet import KubeletClient
 from ax.kubernetes.pod_status import PodStatus
 from ax.meta import AXClusterId, AXClusterDataPath
-from ax.platform.exceptions import AXPlatformException, AXVolumeOwnershipException
-from ax.platform.stats import post_start_container_event
-from ax.platform.routes import ServiceEndpoint
-from ax.platform.pod import DIND_CONTAINER_NAME
-from ax.platform.pod import ARTIFACTS_CONTAINER_SCRATCH_PATH
-from ax.platform.container_specs import AX_DOCKER_GRAPH_STORAGE_THRESHOLD_DEFAULT
-
-from ax.platform.cloudprovider.aws import Route53, Route53HostedZone
-from ax.platform.sidecar import PodLogManager
 from ax.platform.axmon_main import __version__
+from ax.platform.cloudprovider.aws import Route53, Route53HostedZone
+from ax.platform.container_specs import AX_DOCKER_GRAPH_STORAGE_THRESHOLD_DEFAULT
+from ax.platform.exceptions import AXPlatformException, AXVolumeOwnershipException
+from ax.platform.pod import ARTIFACTS_CONTAINER_SCRATCH_PATH
+from ax.platform.pod import DIND_CONTAINER_NAME
+from ax.platform.routes import ServiceEndpoint
+from ax.platform.sidecar import PodLogManager
+from ax.platform.stats import post_start_container_event
+from ax.util.az_patch import az_patch
+import boto3
+import requests
+from retrying import retry
+import urllib3
+
+
+az_patch()
+
+
+
+
+
 
 logger = logging.getLogger("ax.container_waiter")
 
@@ -258,6 +261,21 @@ def wait_for_container(jobname,
 
         return main_container_status, dind_container_status, docker_ids
 
+    def get_host_ip():
+        """
+        Get's the IP address of the host in the cluster.
+        """
+        k8s = KubernetesApiClient()
+        resp = k8s.api.list_node()
+        assert len(resp.items) == 1, "Need 1 node in the cluster"
+        for n in resp.items:
+            for addr in n.status.addresses:
+                addr_dict = addr.to_dict()
+                if addr_dict['type'] == 'InternalIP':
+                    return addr_dict['address']
+
+        return None
+
     def check_pod_status(pod_status):
         status = pod_status.status
         assert isinstance(status, swagger_client.V1PodStatus), "Expect to see an object of type V1PodStatus"
@@ -311,9 +329,19 @@ def wait_for_container(jobname,
         return False
 
     logger.info("jobname=%s podname=%s containername=%s", jobname, podname, containername)
-    node_instance_id = Cloud().meta_data().get_instance_id()
+    node_instance_id = "user-node"
+    try:
+        node_instance_id = Cloud().meta_data().get_instance_id()
+    except Exception as ex:
+        pass
+
     logger.info("Using node instance id %s, namespace %s", node_instance_id, NAMESPACE)
-    kubelet_cli = KubeletClient()
+
+    try:
+        kubelet_cli = KubeletClient()
+    except Exception as e:
+        host_ip = get_host_ip()
+        kubelet_cli = KubeletClient(host_ip)
 
     # have to match with conainer_outer_executor.py
     container_done_flag_postfix = "_ax_container_done_flag"
@@ -415,7 +443,8 @@ if __name__ == "__main__":
     logging.getLogger("ax").setLevel(logging.DEBUG)
     logging.getLogger("ax.kubernetes.kubelet").setLevel(logging.INFO)
 
-    Cloud().set_target_cloud(Cloud().own_cloud())
+    target_cloud = os.environ.get("AX_TARGET_CLOUD", Cloud().own_cloud())
+    Cloud().set_target_cloud(target_cloud)
 
     try:
         wait_for_container(jobname=args[0],
@@ -428,4 +457,8 @@ if __name__ == "__main__":
         logger.info("Container waiter quitting ...")
     except Exception:
         logger.exception("caught exception")
+    finally:
+        import time
+        time.sleep(300)
+
     os._exit(0)

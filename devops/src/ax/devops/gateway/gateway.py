@@ -1,39 +1,42 @@
-import boto3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import logging
 import os
 import re
 import shutil
 import socket
-
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from retrying import retry
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
 from urllib.parse import unquote
 
-from .constants import AxEventTypes, ScmVendors, SUPPORTED_TYPES, DEFAULT_CONCURRENCY, DEFAULT_INTERVAL
-from .scm_rest.bitbucket_client import BitBucketClient
-from .scm_rest.github_client import GitHubClient
-from .scm_rest.gitlab_client import GitLabClient
-from .repo_manager import RepoManager
-from .event_trigger import EventTrigger
-
-from ax.exceptions import AXApiInvalidParam, AXApiAuthFailed, AXApiForbiddenReq, AXApiInternalError
 from ax.devops.axdb.axdb_client import AxdbClient
 from ax.devops.axdb.axops_client import AxopsClient
 from ax.devops.axsys.axsys_client import AxsysClient
 from ax.devops.exceptions import AXScmException
 from ax.devops.jira.jira_client import JiraClient
 from ax.devops.kafka.kafka_client import EventNotificationClient
-from ax.notification_center import FACILITY_GATEWAY
+from ax.devops.redis.redis_client import RedisClient, DB_REPORTING
+from ax.devops.scm.scm import GitClient
+from ax.exceptions import AXApiInvalidParam, AXApiAuthFailed, AXApiForbiddenReq, AXApiInternalError
 from ax.notification_center import CODE_JOB_CI_ELB_CREATION_FAILURE, CODE_JOB_CI_ELB_VERIFICATION_TIMEOUT, \
     CODE_JOB_CI_WEBHOOK_CREATION_FAILURE, CODE_JOB_CI_ELB_DELETION_FAILURE, CODE_JOB_CI_WEBHOOK_DELETION_FAILURE, \
     CODE_CONFIGURATION_SCM_CONNECTION_ERROR
-from ax.devops.redis.redis_client import RedisClient, DB_REPORTING
-from ax.devops.scm.scm import GitClient
+from ax.notification_center import FACILITY_GATEWAY
+import boto3
+from retrying import retry
+
+from .constants import AxEventTypes, ScmVendors, SUPPORTED_TYPES, DEFAULT_CONCURRENCY, DEFAULT_INTERVAL
+from .event_trigger import EventTrigger
+from .repo_manager import RepoManager
+from .scm_rest.bitbucket_client import BitBucketClient
+from .scm_rest.github_client import GitHubClient
+from .scm_rest.gitlab_client import GitLabClient
+
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +51,10 @@ class Gateway(object):
     CLUSTER_NAME_ID = os.environ.get('AX_CLUSTER')
     CUSTOMER_ID = os.environ.get('AX_CUSTOMER_ID')
     S3_BUCKET_NAME = os.getenv("ARGO_DATA_BUCKET_NAME") or 'applatix-cluster-{account}-{seq}'.format(account=CUSTOMER_ID, seq=0)
-    s3_bucket = boto3.resource('s3').Bucket(S3_BUCKET_NAME)
+    s3_bucket = boto3.resource('s3',
+                               aws_access_key_id=os.environ.get("ARGO_S3_ACCESS_KEY_ID", None),
+                               aws_secret_access_key=os.environ.get("ARGO_S3_ACCESS_KEY_SECRET", None),
+                               endpoint_url=os.environ.get("ARGO_S3_ENDPOINT", None)).Bucket(S3_BUCKET_NAME)
 
     def __init__(self):
         self.axdb_client = AxdbClient()
@@ -513,6 +519,7 @@ class Gateway(object):
             key = '{cluster_name}/{cluster_id}/{vendor}/{repo_owner}/{repo_name}/{branch}/{path}'.format(
                 cluster_name=cluster_name, cluster_id=cluster_id, vendor=vendor,
                 repo_owner=repo_owner, repo_name=repo_name, branch=branch, path=path)
+            logger.info("PUT FILE %s/%s\n", Gateway.S3_BUCKET_NAME, key)
             logger.info('Uploading file content to s3 (bucket: %s, key: %s) ...', Gateway.S3_BUCKET_NAME, key)
             response = Gateway.s3_bucket.Object(key).put(Body=file_content)
             etag = response.get('ETag')

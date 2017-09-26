@@ -16,5 +16,4 @@ spec:
       - name: https
         port: 443
         targetPort: 8086
-    type: LoadBalancer
-    loadBalancerSourceRanges: ${TRUSTED_CIDR}
+    type: NodePort
