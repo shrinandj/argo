@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: argo-ci-
+spec:
+  entrypoint: argo-ci
+  arguments:
+    parameters:
+    - name: revision
+      value: master
+  volumes:
+  - name: workdir
+    emptyDir: {}
+
+  templates:
+  - name: argo-ci
+    inputs:
+      parameters:
+      - name: revision
+    steps:
+    - - name: build
+        template: build-golang-example
+        arguments:
+          parameters:
+          - name: revision
+            value: "{{inputs.parameters.revision}}"
+  - name: build-golang-example
+    inputs:
+      parameters:
+      - name: revision
+      artifacts:
+      - name: code
+        path: /go/src/github.com/shrinandj/argo
+        git:
+          repo: https://github.com/shrinandj/argo.git
+          revision: "{{inputs.parameters.revision}}"
+    container:
+      image: shrinand/jenkins-slave-golang-docker:latest
+      command: [sh, -c]
+      args: ["
+        cd /go/src/github.com/shrinandj/argo &&
+        go get -u github.com/golang/dep/cmd/dep &&
+        dep ensure && make no_ui
+      "]
+      env:
+      - name: DOCKER_HOST
+        value: 127.0.0.1
+      volumeMounts:
+      - name: workdir
+        mountPath: /go
+    sidecars:
+    - name: dind
+      image: docker:17.10-dind
+      securityContext:
+        privileged: true
+      mirrorVolumeMounts: true
+
